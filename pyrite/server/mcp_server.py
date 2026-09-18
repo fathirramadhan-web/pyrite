@@ -966,7 +966,7 @@ class PyriteMCPServer:
                 note=note,
                 allow_dangling=allow_dangling,
             )
-        except EntryNotFoundError as e:
+        except (EntryNotFoundError, KBNotFoundError) as e:
             return _error("LINK_FAILED", str(e), retryable=False)
         except PyriteError as e:
             return _error("LINK_FAILED", str(e), retryable=True)

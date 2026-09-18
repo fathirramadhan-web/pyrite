@@ -126,6 +126,13 @@ Target: 0.24.2 "Operational" — see `kb/roadmap.md`.
 
 ### Fixed
 
+- **`kb_link` validates the target entry before creating a link.** Previously
+  only the source was checked; a typo'd or missing target silently created a
+  dangling link. Validation reads the filesystem (`KBRepository.load`), not
+  the index, so an entry that exists on disk but has not been synced is still
+  found. Callers that need a forward reference pass `allow_dangling: true` and
+  receive `resolved: false` in the response. The CLI `pyrite link` command
+  uses the same path and gets strict validation with no escape hatch. (#97)
 - **Typed entries no longer drop frontmatter they do not declare.** A load ->
   save through any typed class (core or plugin) deleted unknown keys —
   `pyrite update -f status=done` stripped `milestone:` and `created:`. The

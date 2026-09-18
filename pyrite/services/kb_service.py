@@ -749,18 +749,23 @@ class KBService:
             raise EntryNotFoundError(f"Entry not found: {source_id}")
 
         tkb = target_kb or source_kb
+
+        # Validate target KB exists
+        target_kb_config = self.config.get_kb(tkb)
+        if not target_kb_config:
+            raise KBNotFoundError(f"KB not found: {tkb}")
+
+        # Validate target on disk (not the index — an unsynced entry is still real)
+        target_repo = repo if tkb == source_kb else KBRepository(target_kb_config)
+        resolved = target_repo.load(target_id) is not None
+
         # Check for duplicate
         for existing in entry.links:
             if existing.target == target_id and (existing.kb or source_kb) == tkb:
-                return {"resolved": True}  # Link already exists
+                return {"resolved": resolved}
 
-        # Validate target exists
-        target_entry = self.db.get_entry(target_id, tkb)
-        resolved = target_entry is not None
         if not resolved and not allow_dangling:
-            raise EntryNotFoundError(
-                f"Target entry not found: {target_id} in {tkb}"
-            )
+            raise EntryNotFoundError(f"Target entry not found: {target_id} in {tkb}")
 
         entry.add_link(target=target_id, relation=relation, note=note, kb=tkb)
         entry.updated_at = datetime.now(UTC)
