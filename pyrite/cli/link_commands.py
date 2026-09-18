@@ -416,10 +416,11 @@ def _discover_neighbors(
     limit: int,
     mode: str = "keyword",
     exclude_linked: bool = True,
+    exclude_types: list[str] | tuple[str, ...] | None = None,
     config=None,
     db=None,
 ) -> list[dict]:
-    """Find semantically similar entries in other KBs, optionally excluding already-linked.
+    """Find semantically similar entries across KBs, optionally excluding already-linked.
 
     Delegates to LinkDiscoveryService.discover_neighbors.
     """
@@ -439,6 +440,7 @@ def _discover_neighbors(
             limit=limit,
             mode=mode,
             exclude_linked=exclude_linked,
+            exclude_types=exclude_types,
         )
     finally:
         if close_db:
@@ -461,15 +463,20 @@ def links_discover(
         "--exclude-linked/--include-linked",
         help="Exclude entries that already have a link to the source",
     ),
+    exclude_types: list[str] | None = typer.Option(
+        None,
+        "--exclude-type",
+        help="Entry types to exclude from results (default: ['task'])",
+    ),
     output_format: str = typer.Option(
         "rich", "--format", help="Output format: json, rich, markdown, csv, yaml"
     ),
 ):
-    """Discover semantically similar entries in other KBs.
+    """Discover semantically similar entries across KBs.
 
     Finds entries that are conceptually related to the source entry
     but don't have an existing link. Useful for cross-KB knowledge
-    discovery and gap-finding.
+    discovery, gap-finding, and surfacing unlinked same-KB entries.
 
     \\b
     Examples:
@@ -502,6 +509,7 @@ def links_discover(
         limit,
         mode=mode,
         exclude_linked=exclude_linked,
+        exclude_types=exclude_types,
     )
 
     data = {

@@ -34,7 +34,7 @@ def _isolate_global_config(tmp_path_factory, monkeypatch):
 @pytest.fixture
 def tmp_kb_dir():
     """Temporary directory with KB subdirectories."""
-    with tempfile.TemporaryDirectory() as tmpdir:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
         tmpdir = Path(tmpdir)
 
         events_path = tmpdir / "events"

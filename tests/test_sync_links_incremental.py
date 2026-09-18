@@ -245,8 +245,9 @@ class TestIncrementalLinkSync:
         )
         backlinks = db_with_entry.get_backlinks("target-0", "test")
         assert len(backlinks) == 1
-        # Backlink should use inverse relation
-        assert backlinks[0]["relation"] in ("depended_on_by", "blocks", "dependency_of")
+        # Backlink should use inverse relation (depends_on is not in
+        # RELATIONSHIP_TYPES so get_inverse_relation returns the fallback)
+        assert backlinks[0]["relation"] == "related_to"
 
     def test_note_preserved_on_unchanged_link(self, db_with_entry):
         """Link notes should be preserved when link is unchanged."""

@@ -130,6 +130,10 @@ class LinkDiscoveryService:
     # discover_neighbors — cross-KB semantic neighbor discovery
     # ------------------------------------------------------------------
 
+    # Default types excluded from neighbor discovery — process-task stubs
+    # with empty bodies rank above substantive entries (#65).
+    DEFAULT_EXCLUDE_TYPES: tuple[str, ...] = ("task",)
+
     def discover_neighbors(
         self,
         entry_id: str,
@@ -138,8 +142,9 @@ class LinkDiscoveryService:
         limit: int = 10,
         mode: str = "keyword",
         exclude_linked: bool = True,
+        exclude_types: list[str] | tuple[str, ...] | None = None,
     ) -> list[dict]:
-        """Find semantically similar entries in other KBs, optionally excluding already-linked.
+        """Find semantically similar entries across KBs, optionally excluding already-linked.
 
         Supports keyword, semantic, and hybrid modes. Falls back to keyword
         if semantic embeddings are not available.
@@ -219,20 +224,31 @@ class LinkDiscoveryService:
             for bl in backlinks:
                 existing_targets.add(bl.get("id", ""))
 
+        # Normalize excluded types: default to DEFAULT_EXCLUDE_TYPES if None
+        if exclude_types is None:
+            blocked_types = set(self.DEFAULT_EXCLUDE_TYPES)
+        else:
+            blocked_types = {t.lower() for t in exclude_types}
+
         candidates = []
         for r in raw_results:
             rid = r.get("id", "")
             r_kb = r.get("kb_name", "")
+            r_type = (r.get("entry_type") or "").lower()
 
             if rid == entry_id and r_kb == kb_name:
                 continue
             if exclude_linked and rid in existing_targets:
+                continue
+            if r_type and (r_type in blocked_types or any(r_type.startswith(bt) for bt in blocked_types)):
                 continue
 
             if "distance" in r:
                 score = round(1.0 - (r["distance"] / 2.0), 4)
             else:
                 score = round(r.get("rank", 0.0), 4)
+
+            snippet = (r.get("snippet") or r.get("summary") or "")[:150]
 
             candidates.append(
                 {
@@ -241,13 +257,15 @@ class LinkDiscoveryService:
                     "title": r.get("title", ""),
                     "entry_type": r.get("entry_type", ""),
                     "score": score,
-                    "snippet": (r.get("snippet") or r.get("summary") or "")[:150],
+                    "snippet": snippet,
                 }
             )
-            if len(candidates) >= limit:
-                break
 
-        return candidates
+        # De-prioritize entries with empty snippets: non-empty snippets first
+        # while preserving relative score order (#65)
+        candidates.sort(key=lambda c: (1 if c["snippet"].strip() else 0, c["score"]), reverse=True)
+
+        return candidates[:limit]
 
     # ------------------------------------------------------------------
     # batch_suggest — cross-KB batch comparison

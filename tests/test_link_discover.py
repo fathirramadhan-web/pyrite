@@ -22,7 +22,7 @@ runner = CliRunner()
 @pytest.fixture
 def discover_env():
     """Environment with two KBs for cross-KB discovery tests."""
-    with tempfile.TemporaryDirectory() as tmpdir:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
         tmpdir = Path(tmpdir)
         db_path = tmpdir / "index.db"
 
@@ -97,6 +97,26 @@ def discover_env():
             target_id="already-linked",
             relation="related_to",
             target_kb="kb-b",
+        )
+
+        # Create a task entry (should be excluded by default, #65)
+        svc.create_entry(
+            "kb-b",
+            "task-stub",
+            "Process Coordination Task",
+            body="",
+            entry_type="task",
+            tags=["coordination", "trust"],
+        )
+
+        # Create an entry with empty body (should be de-prioritized, #65)
+        svc.create_entry(
+            "kb-b",
+            "empty-body-entry",
+            "Trust Framework Overview",
+            body="",
+            entry_type="concept",
+            tags=["trust", "governance"],
         )
 
         yield {
@@ -223,6 +243,57 @@ class TestDiscoverNeighbors:
             db=discover_env["db"],
         )
         assert len(results) <= 1
+
+    def test_excludes_task_type_by_default(self, discover_env):
+        """Task-family entries excluded by default (#65)."""
+        results = _discover_neighbors(
+            entry_id="trust-mechanisms",
+            kb_name="kb-a",
+            target_kb="kb-b",
+            limit=20,
+            mode="keyword",
+            exclude_linked=True,
+            config=discover_env["config"],
+            db=discover_env["db"],
+        )
+        ids = [r["id"] for r in results]
+        assert "task-stub" not in ids
+
+    def test_includes_task_type_when_exclude_types_empty(self, discover_env):
+        """Pass exclude_types=[] to include task entries (#65)."""
+        results = _discover_neighbors(
+            entry_id="trust-mechanisms",
+            kb_name="kb-a",
+            target_kb="kb-b",
+            limit=20,
+            mode="keyword",
+            exclude_linked=True,
+            exclude_types=[],
+            config=discover_env["config"],
+            db=discover_env["db"],
+        )
+        ids = [r["id"] for r in results]
+        assert "task-stub" in ids
+
+    def test_deprioritizes_empty_snippets(self, discover_env):
+        """Entries with empty body/snippet ranked below substantive ones (#65)."""
+        results = _discover_neighbors(
+            entry_id="trust-mechanisms",
+            kb_name="kb-a",
+            target_kb="kb-b",
+            limit=20,
+            mode="keyword",
+            exclude_linked=True,
+            config=discover_env["config"],
+            db=discover_env["db"],
+        )
+        ids = [r["id"] for r in results]
+        if "empty-body-entry" in ids:
+            # Entries with content should rank above empty-body entry
+            content_ids = {"psychological-safety", "decentralized-orgs"}
+            for cid in content_ids:
+                if cid in ids:
+                    assert ids.index(cid) < ids.index("empty-body-entry")
 
 
 class TestDiscoverCLI:

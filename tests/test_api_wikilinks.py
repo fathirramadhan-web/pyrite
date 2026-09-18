@@ -17,7 +17,7 @@ from pyrite.storage.database import PyriteDB
 
 @pytest.fixture
 def tmpdir():
-    with tempfile.TemporaryDirectory() as d:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
         yield Path(d)
 
 

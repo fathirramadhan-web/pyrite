@@ -1123,6 +1123,9 @@ class PyriteMCPServer:
         from ..services.link_discovery_service import LinkDiscoveryService
 
         svc = LinkDiscoveryService(self.config, self.db)
+        # exclude_types: None → service default (["task"]);
+        # explicit list (even empty) → pass through
+        exclude_types = args.get("exclude_types")
         candidates = svc.discover_neighbors(
             entry_id=entry_id,
             kb_name=kb_name,
@@ -1130,6 +1133,7 @@ class PyriteMCPServer:
             limit=args.get("limit", 10),
             mode=args.get("mode", "hybrid"),
             exclude_linked=args.get("exclude_linked", True),
+            exclude_types=exclude_types,
         )
 
         return {

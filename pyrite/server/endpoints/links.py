@@ -24,6 +24,9 @@ def discover_neighbors(
     limit: int = Query(10, ge=1, le=100),
     mode: str = Query("hybrid", description="Search mode: keyword, semantic, hybrid"),
     exclude_linked: bool = Query(True, description="Exclude entries already linked"),
+    exclude_types: list[str] | None = Query(
+        None, description="Entry types to exclude (default: ['task'])"
+    ),
     svc: LinkDiscoveryService = Depends(get_link_discovery_service),
 ):
     """Find semantically similar but unlinked entries across KBs."""
@@ -34,6 +37,7 @@ def discover_neighbors(
         limit=limit,
         mode=mode,
         exclude_linked=exclude_linked,
+        exclude_types=exclude_types,
     )
 
     return {

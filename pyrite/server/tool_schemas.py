@@ -626,7 +626,7 @@ READ_TOOLS = {
         },
     },
     "kb_discover_neighbors": {
-        "description": "Find entries in other KBs that are semantically similar to a source entry but not yet linked. Useful for cross-KB knowledge discovery and gap-finding.",
+        "description": "Find entries across all KBs (including the source KB) that are semantically similar to a source entry but not yet linked. Useful for cross-KB knowledge discovery, gap-finding, and surfacing same-KB entries that should be linked.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -654,6 +654,11 @@ READ_TOOLS = {
                 "exclude_linked": {
                     "type": "boolean",
                     "description": "Exclude entries that already have a link to the source (default: true)",
+                },
+                "exclude_types": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Entry types to exclude from results (default: ['task']). Pass [] to include all types.",
                 },
             },
             "required": ["entry_id", "kb_name"],
