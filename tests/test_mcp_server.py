@@ -824,6 +824,41 @@ class TestPyriteMCPServer:
         assert result["results"][1]["created"] is False
         assert "title" in result["results"][1]["error"].lower()
 
+    def test_kb_bulk_create_schema_allows_missing_title(self):
+        """Issue #95: parameter schema must not require title so malformed entries are validated per-entry."""
+        from pyrite.server.tool_schemas import WRITE_TOOLS
+
+        schema = WRITE_TOOLS["kb_bulk_create"]["inputSchema"]
+        item_schema = schema["properties"]["entries"]["items"]
+        assert "required" not in item_schema or "title" not in item_schema.get("required", [])
+
+    def test_kb_bulk_create_best_effort_five_entries(self, mcp_admin_server):
+        """Issue #95: five entries with missing and empty titles; valid entries succeed."""
+        server = mcp_admin_server["server"]
+
+        result = server._dispatch_tool(
+            "kb_bulk_create",
+            {
+                "kb_name": "test-events",
+                "entries": [
+                    {"title": "Bulk entry 1 (valid)", "body": "Body 1"},
+                    {"title": "", "body": "Empty title"},
+                    {"title": "Bulk entry 3 (valid)", "body": "Body 3"},
+                    {"entry_type": "note", "body": "Omitted title"},
+                    {"title": "Bulk entry 5 (valid)", "body": "Body 5"},
+                ],
+            },
+        )
+
+        assert result["total"] == 5
+        assert result["created"] == 3
+        assert result["failed"] == 2
+        assert result["results"][0]["created"] is True
+        assert result["results"][1]["created"] is False
+        assert result["results"][2]["created"] is True
+        assert result["results"][3]["created"] is False
+        assert result["results"][4]["created"] is True
+
     def test_kb_bulk_create_empty(self, mcp_admin_server):
         """Test bulk create with empty entries array."""
         result = mcp_admin_server["server"]._dispatch_tool(

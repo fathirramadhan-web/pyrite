@@ -753,7 +753,6 @@ WRITE_TOOLS = {
                                 "description": "Additional fields",
                             },
                         },
-                        "required": ["title"],
                     },
                 },
             },
