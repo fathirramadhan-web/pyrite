@@ -370,6 +370,9 @@ class PyriteMCPServer:
 
         if fields:
             result = _project_fields(result, fields)
+            # Honour explicit body_limit even when fields skips default chunking
+            if "body" in result:
+                result = _chunk_body(result, offset=body_offset, limit=body_limit)
         else:
             result = _chunk_body(result, offset=body_offset, limit=body_limit)
 
@@ -533,17 +536,21 @@ class PyriteMCPServer:
             return _error("VALIDATION_FAILED", f"Maximum {MAX_BATCH_READ_ENTRIES} entries per call")
 
         ids = [(e["entry_id"], e["kb_name"]) for e in entries_spec]
-        results = self.svc.get_entries(ids)
-
-        if fields:
-            results = [_project_fields(r, fields) for r in results]
-        else:
-            results = [_chunk_body(r, offset=body_offset, limit=body_limit) for r in results]
-
-        found_ids = {(r["id"], r["kb_name"]) for r in results}
+        raw_results = self.svc.get_entries(ids)
+        found_ids = {(r["id"], r["kb_name"]) for r in raw_results}
         not_found = [
             {"entry_id": eid, "kb_name": kb} for eid, kb in ids if (eid, kb) not in found_ids
         ]
+
+        if fields:
+            results = [_project_fields(r, fields) for r in raw_results]
+            # Honour explicit body_limit even when fields skips default chunking
+            results = [
+                _chunk_body(r, offset=body_offset, limit=body_limit) if "body" in r else r
+                for r in results
+            ]
+        else:
+            results = [_chunk_body(r, offset=body_offset, limit=body_limit) for r in raw_results]
 
         return {
             "entries": results,

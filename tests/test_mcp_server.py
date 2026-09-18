@@ -1833,5 +1833,65 @@ class TestBodyChunking:
             assert len(entry["body"]) == 8000
 
 
+    def test_fields_with_body_still_honours_body_limit_kb_get(self):
+        """kb_get: fields=['id','title','body'] + body_limit truncates body (issue #58)."""
+        kb_defs = [{"name": "test", "kb_type": "generic"}]
+        with _make_mcp_server(kb_defs, tier="write") as ctx:
+            entry_id, full_body = self._make_large_entry(ctx, body_size=20000)
+            server = ctx["server"]
+            result = server._dispatch_tool(
+                "kb_get",
+                {
+                    "entry_id": entry_id,
+                    "kb_name": "test",
+                    "fields": ["id", "title", "body"],
+                    "body_limit": 6000,
+                },
+            )
+            entry = result["entry"]
+            assert len(entry["body"]) == 6000
+            assert entry["body"] == full_body[:6000]
+            assert entry["body_truncated"] is True
+            assert entry["body_length"] == 20000
+
+    def test_fields_with_body_still_honours_body_limit_batch_read(self):
+        """kb_batch_read: fields + body_limit truncates body (issue #58)."""
+        kb_defs = [{"name": "test", "kb_type": "generic"}]
+        with _make_mcp_server(kb_defs, tier="write") as ctx:
+            entry_id, full_body = self._make_large_entry(ctx, body_size=20000)
+            server = ctx["server"]
+            result = server._dispatch_tool(
+                "kb_batch_read",
+                {
+                    "entries": [{"entry_id": entry_id, "kb_name": "test"}],
+                    "fields": ["id", "title", "body"],
+                    "body_limit": 6000,
+                },
+            )
+            entry = result["entries"][0]
+            assert len(entry["body"]) == 6000
+            assert entry["body"] == full_body[:6000]
+            assert entry["body_truncated"] is True
+            assert entry["body_length"] == 20000
+
+    def test_fields_without_body_skips_chunking(self):
+        """fields that exclude 'body' should not add body/truncation keys."""
+        kb_defs = [{"name": "test", "kb_type": "generic"}]
+        with _make_mcp_server(kb_defs, tier="write") as ctx:
+            entry_id, _ = self._make_large_entry(ctx, body_size=20000)
+            server = ctx["server"]
+            result = server._dispatch_tool(
+                "kb_get",
+                {
+                    "entry_id": entry_id,
+                    "kb_name": "test",
+                    "fields": ["id", "title"],
+                },
+            )
+            entry = result["entry"]
+            assert "body" not in entry
+            assert "body_truncated" not in entry
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

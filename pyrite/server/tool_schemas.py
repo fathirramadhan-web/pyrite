@@ -98,7 +98,7 @@ READ_TOOLS = {
                 "fields": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Return only these fields (e.g. ['id','title','body']). Omit for all fields. When specified, body chunking is skipped.",
+                    "description": "Return only these fields (e.g. ['id','title','body']). Omit for all fields. body_limit still applies when 'body' is included.",
                 },
                 "body_offset": {
                     "type": "integer",
@@ -267,7 +267,7 @@ READ_TOOLS = {
                 "fields": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Return only these fields per entry. Omit for all fields. When specified, body chunking is skipped.",
+                    "description": "Return only these fields per entry. Omit for all fields. body_limit still applies when 'body' is included.",
                 },
                 "body_offset": {
                     "type": "integer",
