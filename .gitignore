@@ -84,3 +84,11 @@ pyrite_deployments/
 
 # Repo-local pyrite config (a worktree's own KB registry and index; see ADR-0032)
 .pyrite/
+
+# Auto-added by github-engineer
+*.obj
+*.so
+*.whl
+nem_stats.c
+*.exp
+*.lib

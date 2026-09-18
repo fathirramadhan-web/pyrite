@@ -715,7 +715,8 @@ class KBService:
         relation: str = "related_to",
         target_kb: str | None = None,
         note: str = "",
-    ) -> None:
+        allow_dangling: bool = False,
+    ) -> dict[str, Any]:
         """
         Add a link from one entry to another.
 
@@ -728,6 +729,13 @@ class KBService:
             relation: Relationship type (default: related_to)
             target_kb: Target KB (defaults to source_kb)
             note: Optional note about the link
+            allow_dangling: If True, permit linking to a target that
+                doesn't exist yet (forward reference).  Otherwise raise
+                EntryNotFoundError.
+
+        Returns:
+            dict with ``resolved`` (bool) indicating whether the target
+            was found at link-creation time.
         """
         kb_config = self.config.get_kb(source_kb)
         if not kb_config:
@@ -744,11 +752,20 @@ class KBService:
         # Check for duplicate
         for existing in entry.links:
             if existing.target == target_id and (existing.kb or source_kb) == tkb:
-                return  # Link already exists
+                return {"resolved": True}  # Link already exists
+
+        # Validate target exists
+        target_entry = self.db.get_entry(target_id, tkb)
+        resolved = target_entry is not None
+        if not resolved and not allow_dangling:
+            raise EntryNotFoundError(
+                f"Target entry not found: {target_id} in {tkb}"
+            )
 
         entry.add_link(target=target_id, relation=relation, note=note, kb=tkb)
         entry.updated_at = datetime.now(UTC)
         self._doc_mgr.save_entry(entry, source_kb, kb_config)
+        return {"resolved": resolved}
 
     # =========================================================================
     # Query Operations (read-only, delegate to db)

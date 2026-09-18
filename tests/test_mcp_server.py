@@ -912,7 +912,7 @@ class TestPyriteMCPServer:
         assert len(source_links) == 1
 
     def test_kb_link_not_found(self, mcp_admin_server):
-        """Test linking from a nonexistent entry returns error."""
+        """Test linking from a nonexistent source returns error, retryable=false."""
         result = mcp_admin_server["server"]._dispatch_tool(
             "kb_link",
             {
@@ -922,6 +922,102 @@ class TestPyriteMCPServer:
             },
         )
         assert "error" in result
+        assert result["error_code"] == "LINK_FAILED"
+        assert result["retryable"] is False
+
+    def test_kb_link_target_not_found(self, mcp_admin_server):
+        """Target validation: linking to a nonexistent target returns error, retryable=false."""
+        server = mcp_admin_server["server"]
+
+        r1 = server._dispatch_tool(
+            "kb_create",
+            {
+                "kb_name": "test-events",
+                "entry_type": "event",
+                "title": "Source For Dangling",
+                "date": "2025-05-01",
+                "body": "Source exists.",
+            },
+        )
+        assert r1.get("created")
+
+        result = server._dispatch_tool(
+            "kb_link",
+            {
+                "source_id": r1["entry_id"],
+                "source_kb": "test-events",
+                "target_id": "zzz-nonexistent-target",
+            },
+        )
+        assert "error" in result
+        assert result["error_code"] == "LINK_FAILED"
+        assert result["retryable"] is False
+        assert "zzz-nonexistent-target" in result["error"]
+
+    def test_kb_link_allow_dangling(self, mcp_admin_server):
+        """allow_dangling=true creates link to missing target, resolved=false."""
+        server = mcp_admin_server["server"]
+
+        r1 = server._dispatch_tool(
+            "kb_create",
+            {
+                "kb_name": "test-events",
+                "entry_type": "event",
+                "title": "Source For Forward Ref",
+                "date": "2025-05-02",
+                "body": "Source exists.",
+            },
+        )
+        assert r1.get("created")
+
+        result = server._dispatch_tool(
+            "kb_link",
+            {
+                "source_id": r1["entry_id"],
+                "source_kb": "test-events",
+                "target_id": "future-entry-not-yet-created",
+                "allow_dangling": True,
+            },
+        )
+        assert result.get("linked") is True
+        assert result["resolved"] is False
+
+    def test_kb_link_resolved_true(self, mcp_admin_server):
+        """Normal link to existing target reports resolved=true."""
+        server = mcp_admin_server["server"]
+
+        r1 = server._dispatch_tool(
+            "kb_create",
+            {
+                "kb_name": "test-events",
+                "entry_type": "event",
+                "title": "Resolved Source",
+                "date": "2025-05-03",
+                "body": "Source.",
+            },
+        )
+        r2 = server._dispatch_tool(
+            "kb_create",
+            {
+                "kb_name": "test-events",
+                "entry_type": "event",
+                "title": "Resolved Target",
+                "date": "2025-05-04",
+                "body": "Target.",
+            },
+        )
+        assert r1.get("created") and r2.get("created")
+
+        result = server._dispatch_tool(
+            "kb_link",
+            {
+                "source_id": r1["entry_id"],
+                "source_kb": "test-events",
+                "target_id": r2["entry_id"],
+            },
+        )
+        assert result.get("linked") is True
+        assert result["resolved"] is True
 
     def test_kb_link_in_write_tier(self):
         """Test kb_link appears in write-tier tools but not read-tier."""

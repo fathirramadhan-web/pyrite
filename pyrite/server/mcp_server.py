@@ -954,16 +954,20 @@ class PyriteMCPServer:
         relation = args.get("relation", "related_to")
         target_kb = args.get("target_kb")
         note = args.get("note", "")
+        allow_dangling = args.get("allow_dangling", False)
 
         try:
-            self.svc.add_link(
+            result = self.svc.add_link(
                 source_id=source_id,
                 source_kb=source_kb,
                 target_id=target_id,
                 relation=relation,
                 target_kb=target_kb,
                 note=note,
+                allow_dangling=allow_dangling,
             )
+        except EntryNotFoundError as e:
+            return _error("LINK_FAILED", str(e), retryable=False)
         except PyriteError as e:
             return _error("LINK_FAILED", str(e), retryable=True)
 
@@ -972,6 +976,7 @@ class PyriteMCPServer:
             "source_id": source_id,
             "target_id": target_id,
             "relation": relation,
+            "resolved": result["resolved"],
         }
 
     # =========================================================================
