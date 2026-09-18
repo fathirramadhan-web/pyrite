@@ -47,13 +47,21 @@ class SchemaService:
             "validation": data.get("validation", {}),
         }
 
-    def add_type(self, kb_name: str, type_name: str, type_def: dict[str, Any]) -> dict[str, Any]:
+    def add_type(
+        self,
+        kb_name: str,
+        type_name: str,
+        type_def: dict[str, Any],
+        *,
+        overwrite: bool = False,
+    ) -> dict[str, Any]:
         """Add a type definition to kb.yaml.
 
         Args:
             kb_name: Knowledge base name.
             type_name: Type name to add.
             type_def: Type definition with description, required, optional, subdirectory.
+            overwrite: If True, replace an existing type definition.
 
         Returns:
             Result dict with added status.
@@ -62,8 +70,11 @@ class SchemaService:
         data = self._load_kb_yaml(kb)
 
         types = data.get("types", {})
-        if type_name in types:
-            return {"error": f"Type '{type_name}' already exists in KB '{kb_name}'"}
+        if type_name in types and not overwrite:
+            return {
+                "error": f"type '{type_name}' exists; use update_type or overwrite: true",
+                "error_code": "VALIDATION",
+            }
 
         types[type_name] = type_def
         data["types"] = types

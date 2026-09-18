@@ -458,6 +458,48 @@ class TestPyriteMCPServer:
         )
         assert "error" in result
 
+    def test_kb_manage_add_type_duplicate_and_overwrite(self, mcp_admin_server):
+        """Test kb_manage add_type rejects existing type unless overwrite=True."""
+        server = mcp_admin_server["server"]
+        # Add a new type
+        res1 = server._dispatch_tool(
+            "kb_manage",
+            {
+                "action": "add_type",
+                "kb_name": "test-events",
+                "type_name": "custom_item",
+                "type_def": {"description": "v1"},
+            },
+        )
+        assert res1.get("added") is True
+
+        # Duplicate without overwrite fails with VALIDATION error
+        res2 = server._dispatch_tool(
+            "kb_manage",
+            {
+                "action": "add_type",
+                "kb_name": "test-events",
+                "type_name": "custom_item",
+                "type_def": {"description": "v2"},
+            },
+        )
+        assert "error" in res2
+        assert res2.get("error_code") == "VALIDATION"
+        assert "exists" in res2["error"]
+
+        # Duplicate with overwrite=True succeeds
+        res3 = server._dispatch_tool(
+            "kb_manage",
+            {
+                "action": "add_type",
+                "kb_name": "test-events",
+                "type_name": "custom_item",
+                "type_def": {"description": "v2"},
+                "overwrite": True,
+            },
+        )
+        assert res3.get("added") is True
+
     # ------------------------------------------------------------------
     # Metadata round-trip (regression for build_entry metadata bug)
     # ------------------------------------------------------------------

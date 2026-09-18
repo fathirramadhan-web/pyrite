@@ -1297,11 +1297,12 @@ class PyriteMCPServer:
             elif action == "add_type":
                 type_name = args.get("type_name")
                 type_def = args.get("type_def", {})
+                overwrite = args.get("overwrite", False)
                 if not kb_name or not type_name:
                     return _error(
                         "MISSING_PARAMETER", "kb_name and type_name required for add_type"
                     )
-                return svc.add_type(kb_name, type_name, type_def)
+                return svc.add_type(kb_name, type_name, type_def, overwrite=overwrite)
 
             elif action == "remove_type":
                 type_name = args.get("type_name")

@@ -148,7 +148,30 @@ class TestAddType:
         svc = SchemaService(config)
         result = svc.add_type("test", "task", {"description": "new"})
         assert "error" in result
-        assert "already exists" in result["error"]
+        assert "exists" in result["error"]
+        assert result["error_code"] == "VALIDATION"
+
+        # Verify original type preserved
+        data = load_yaml_file(kb.kb_yaml_path)
+        assert data["types"]["task"]["description"] == "existing"
+
+    def test_add_type_overwrite_replaces(self, tmp_kb):
+        config, kb = tmp_kb
+        dump_yaml_file(
+            {
+                "name": "test",
+                "types": {"task": {"description": "existing", "required": ["title"]}},
+            },
+            kb.kb_yaml_path,
+        )
+
+        svc = SchemaService(config)
+        result = svc.add_type("test", "task", {"description": "replaced"}, overwrite=True)
+        assert result["added"] is True
+
+        data = load_yaml_file(kb.kb_yaml_path)
+        assert data["types"]["task"]["description"] == "replaced"
+        assert "required" not in data["types"]["task"]
 
 
 class TestRemoveType:

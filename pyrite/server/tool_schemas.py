@@ -1046,6 +1046,10 @@ ADMIN_TOOLS = {
                     "type": "object",
                     "description": "Type definition with description, required, optional, subdirectory (for add_type)",
                 },
+                "overwrite": {
+                    "type": "boolean",
+                    "description": "Whether to overwrite an existing type definition (for add_type)",
+                },
                 "schema": {
                     "type": "object",
                     "description": "Schema object with types, policies, validation keys (for set_schema)",
